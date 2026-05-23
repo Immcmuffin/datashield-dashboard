@@ -10,8 +10,8 @@ const PLANS = [
     monthly: 6.99,
     yearly: 59.99,
     features: ['20 data broker removals', 'Monthly re-scans', 'Email scan reports', 'Customer dashboard'],
-    monthlyLink: 'https://buy.stripe.com/test_5kQ7sK2KC4NeaNa76F4Vy00',
-    yearlyLink: 'https://buy.stripe.com/test_5kQ7sK2KC4NeaNa76F4Vy00',
+    monthlyLink: 'https://buy.stripe.com/5kQ7sK2KC4NeaNa76F4Vy00',
+    yearlyLink: 'https://buy.stripe.com/5kQ7sK2KC4NeaNa76F4Vy00',
     highlight: false,
   },
   {
@@ -21,8 +21,8 @@ const PLANS = [
     monthly: 12.99,
     yearly: 99.99,
     features: ['50+ data broker removals', 'Bi-weekly re-scans', 'Email scan reports', 'Customer dashboard', 'Priority processing'],
-    monthlyLink: 'https://buy.stripe.com/test_dRm28q0CudjKdZmdv34Vy01',
-    yearlyLink: 'https://buy.stripe.com/test_dRm28q0CudjKdZmdv34Vy01',
+    monthlyLink: 'https://buy.stripe.com/dRm28q0CudjKdZmdv34Vy01',
+    yearlyLink: 'https://buy.stripe.com/dRm28q0CudjKdZmdv34Vy01',
     highlight: true,
   },
   {
@@ -32,8 +32,8 @@ const PLANS = [
     monthly: 19.99,
     yearly: 149.99,
     features: ['Unlimited data brokers', 'Weekly re-scans', 'Email scan reports', 'Customer dashboard', 'Priority processing', 'Dedicated support'],
-    monthlyLink: 'https://buy.stripe.com/test_9B63cu990bbC1cAdv34Vy02',
-    yearlyLink: 'https://buy.stripe.com/test_9B63cu990bbC1cAdv34Vy02',
+    monthlyLink: 'https://buy.stripe.com/9B63cu990bbC1cAdv34Vy02',
+    yearlyLink: 'https://buy.stripe.com/9B63cu990bbC1cAdv34Vy02',
     highlight: false,
   },
 ]
