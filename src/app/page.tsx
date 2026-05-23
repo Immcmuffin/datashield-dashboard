@@ -11,7 +11,10 @@ export default function Home() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: `${location.origin}/dashboard` } })
+    await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `https://removemydata.app/dashboard` }
+    })
     setSent(true)
     setLoading(false)
   }
@@ -47,7 +50,10 @@ export default function Home() {
           </form>
         )}
 
-        <p className={styles.tagline}>We automatically scan and remove your data from 20+ data brokers every 30 days.</p>
+        <p className={styles.tagline}>
+          We automatically scan and remove your data from 20+ data brokers every 30 days.{' '}
+          <a href="/pricing" style={{color:'#0f1117'}}>See plans →</a>
+        </p>
       </div>
     </main>
   )
