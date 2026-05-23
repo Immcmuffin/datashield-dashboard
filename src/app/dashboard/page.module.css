@@ -1,0 +1,36 @@
+.loading { display: flex; align-items: center; justify-content: center; min-height: 100vh; color: #888; font-size: 14px; }
+.page { min-height: 100vh; background: #f5f5f3; }
+.header { background: #fff; border-bottom: 1px solid #e8e8e8; padding: 0 2rem; height: 60px; display: flex; align-items: center; justify-content: space-between; }
+.brand { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; }
+.logo { width: 32px; height: 32px; background: #0f1117; color: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+.headerRight { display: flex; align-items: center; gap: 12px; }
+.email { font-size: 13px; color: #888; }
+.signOut { font-size: 13px; color: #888; background: none; border: 1px solid #e0e0e0; padding: 5px 12px; border-radius: 6px; cursor: pointer; }
+.signOut:hover { background: #f5f5f5; }
+.main { max-width: 720px; margin: 0 auto; padding: 2rem; }
+.intro { margin-bottom: 1.5rem; }
+.intro h1 { font-size: 24px; font-weight: 600; margin-bottom: 4px; }
+.intro p { font-size: 14px; color: #666; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1rem; }
+.stat { background: #fff; border: 1px solid #e8e8e8; border-radius: 10px; padding: 1rem; text-align: center; }
+.statNum { font-size: 26px; font-weight: 600; margin-bottom: 3px; }
+.statLabel { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.04em; }
+.progressCard { background: #fff; border: 1px solid #e8e8e8; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; }
+.progressHeader { display: flex; justify-content: space-between; font-size: 13px; color: #666; margin-bottom: 8px; }
+.progressBar { width: 100%; height: 8px; background: #f0f0f0; border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
+.progressFill { height: 100%; background: #1D9E75; border-radius: 4px; transition: width 0.5s ease; }
+.nextScan { font-size: 12px; color: #888; }
+.section { margin-bottom: 1.5rem; }
+.section h2 { font-size: 15px; font-weight: 500; margin-bottom: 10px; color: #444; }
+.brokerGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 8px; }
+.brokerCard { background: #fff; border: 1px solid #e8e8e8; border-radius: 8px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; }
+.brokerIcon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; font-weight: 600; }
+.completed .brokerIcon { background: #e1f5ee; color: #0f6e56; }
+.running .brokerIcon, .claimed .brokerIcon { background: #e6f1fb; color: #185FA5; }
+.failed .brokerIcon { background: #fcebeb; color: #a32d2d; }
+.pending .brokerIcon { background: #f5f5f5; color: #aaa; }
+.brokerName { font-size: 13px; font-weight: 500; color: #0f1117; }
+.brokerStatus { font-size: 11px; color: #888; margin-top: 1px; }
+.infoBox { background: #fff; border: 1px solid #e8e8e8; border-radius: 10px; padding: 1.25rem; }
+.infoBox h3 { font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+.infoBox p { font-size: 13px; color: #666; line-height: 1.6; }
