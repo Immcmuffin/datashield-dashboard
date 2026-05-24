@@ -13,7 +13,7 @@ export default function Home() {
     setLoading(true)
     await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: 'https://removemydata.app/auth/callback' }
+      options: { emailRedirectTo: 'https://removemydata.app/dashboard' }
     })
     setSent(true)
     setLoading(false)
