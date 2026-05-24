@@ -9,67 +9,72 @@ interface Subscription { id: string; plan_id: string; status: string; subject_na
 const STATUS_ICON: Record<string, string> = { completed: '✓', running: '●', claimed: '○', pending: '○', failed: '✗' }
 const STATUS_LABEL: Record<string, string> = { completed: 'Submitted', running: 'Running', claimed: 'Queued', pending: 'Waiting', failed: 'Failed' }
 
+type AuthState = 'loading' | 'authenticated' | 'unauthenticated'
+
 export default function Dashboard() {
+  const [authState, setAuthState] = useState<AuthState>('loading')
   const [jobs, setJobs] = useState<Job[]>([])
   const [sub, setSub] = useState<Subscription | null>(null)
-  const [loading, setLoading] = useState(true)
   const [userEmail, setUserEmail] = useState('')
   const [sendingReport, setSendingReport] = useState(false)
   const [reportSent, setReportSent] = useState(false)
 
-  const fetchData = useCallback(async (userId: string, email: string) => {
-    setUserEmail(email)
+  const loadData = useCallback(async () => {
     const { data } = await supabase.rpc('get_my_dashboard')
     setSub(data?.subscription || null)
     setJobs(data?.jobs || [])
-    setLoading(false)
   }, [])
 
   useEffect(() => {
-    // Wait for auth state — handles both existing sessions and new magic link logins
-    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event, session) => {
+    // Give Supabase time to process the URL hash from magic link
+    // before deciding if we're authenticated or not
+    const timeout = setTimeout(() => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session) setAuthState('unauthenticated')
+      })
+    }, 3000)
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
-        fetchData(session.user.id, session.user.email || '')
-      } else if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session)) {
-        window.location.href = '/'
+        clearTimeout(timeout)
+        setUserEmail(session.user.email || '')
+        setAuthState('authenticated')
+        loadData()
+      } else if (event === 'SIGNED_OUT') {
+        clearTimeout(timeout)
+        setAuthState('unauthenticated')
       }
+      // Ignore INITIAL_SESSION with null — wait for timeout instead
     })
-    return () => authSub.unsubscribe()
-  }, [fetchData])
+
+    return () => {
+      clearTimeout(timeout)
+      subscription.unsubscribe()
+    }
+  }, [loadData])
 
   useEffect(() => {
-    const interval = setInterval(async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        const { data } = await supabase.rpc('get_my_dashboard')
-        setSub(data?.subscription || null)
-        setJobs(data?.jobs || [])
-      }
-    }, 10000)
+    if (authState === 'unauthenticated') {
+      window.location.href = '/'
+    }
+  }, [authState])
+
+  useEffect(() => {
+    if (authState !== 'authenticated') return
+    const interval = setInterval(loadData, 10000)
     return () => clearInterval(interval)
-  }, [])
+  }, [authState, loadData])
 
-  async function sendScanReport() {
-    if (!sub) return
-    setSendingReport(true)
-    await fetch('https://raiddanqvnzxyjwfmyqo.supabase.co/functions/v1/notify-scan-complete', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subscription_id: sub.id })
-    })
-    setSendingReport(false)
-    setReportSent(true)
-    setTimeout(() => setReportSent(false), 3000)
-  }
-
-  if (loading) return (
+  if (authState === 'loading') return (
     <div className={styles.loading}>
-      <div style={{fontSize:13,color:'#888'}}>Loading your dashboard...</div>
+      <div style={{width:40,height:40,background:'#0f1117',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:700,fontSize:14,marginBottom:16}}>DS</div>
+      <div style={{fontSize:14,color:'#888'}}>Loading...</div>
     </div>
   )
 
   if (!sub) return (
     <div className={styles.loading}>
-      <p style={{marginBottom:12}}>No subscription found.</p>
+      <p style={{marginBottom:12,color:'#444'}}>No subscription found.</p>
       <a href="/pricing" style={{color:'#0f1117',fontSize:14}}>See plans →</a>
     </div>
   )
@@ -93,7 +98,7 @@ export default function Dashboard() {
         <div className={styles.brand}><div className={styles.logo}>DS</div><span>DataShield</span></div>
         <div className={styles.headerRight}>
           <span className={styles.email}>{userEmail}</span>
-          <button onClick={sendScanReport} disabled={sendingReport} className={styles.bellBtn}>
+          <button onClick={async () => { setSendingReport(true); await fetch('https://raiddanqvnzxyjwfmyqo.supabase.co/functions/v1/notify-scan-complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription_id:sub.id})}); setSendingReport(false); setReportSent(true); setTimeout(()=>setReportSent(false),3000) }} disabled={sendingReport} className={styles.bellBtn}>
             {reportSent ? '✓ Sent' : sendingReport ? '...' : '🔔 Email report'}
           </button>
           <button onClick={async () => { await supabase.auth.signOut(); window.location.href = '/' }} className={styles.signOut}>Sign out</button>
@@ -113,23 +118,20 @@ export default function Dashboard() {
         <div className={styles.progressCard}>
           <div className={styles.progressHeader}><span>Scan #{sub.total_scans} progress</span><span>{pct}%</span></div>
           <div className={styles.progressBar}><div className={styles.progressFill} style={{width:`${pct}%`}} /></div>
-          <p className={styles.nextScan}>Next automatic scan: <strong>{nextScan}</strong></p>
+          <p className={styles.nextScan}>Next scan: <strong>{nextScan}</strong></p>
         </div>
         <div className={styles.section}>
           <h2>Broker status</h2>
           <div className={styles.brokerGrid}>
-            {sortedJobs.map(job => {
-              const notFound = job.result?.status === 'not_found'
-              return (
-                <div key={job.id} className={`${styles.brokerCard} ${styles[job.status] || styles.pending}`}>
-                  <div className={styles.brokerIcon}>{STATUS_ICON[job.status] || '○'}</div>
-                  <div>
-                    <div className={styles.brokerName}>{job.broker_name}</div>
-                    <div className={styles.brokerStatus}>{notFound ? 'Not listed' : STATUS_LABEL[job.status] || job.status}</div>
-                  </div>
+            {sortedJobs.map(job => (
+              <div key={job.id} className={`${styles.brokerCard} ${styles[job.status] || styles.pending}`}>
+                <div className={styles.brokerIcon}>{STATUS_ICON[job.status] || '○'}</div>
+                <div>
+                  <div className={styles.brokerName}>{job.broker_name}</div>
+                  <div className={styles.brokerStatus}>{job.result?.status === 'not_found' ? 'Not listed' : STATUS_LABEL[job.status] || job.status}</div>
                 </div>
-              )
-            })}
+              </div>
+            ))}
           </div>
         </div>
         <div className={styles.infoBox}>
