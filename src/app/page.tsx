@@ -13,7 +13,7 @@ export default function Home() {
     setLoading(true)
     await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `https://removemydata.app/dashboard` }
+      options: { emailRedirectTo: 'https://removemydata.app/auth/callback' }
     })
     setSent(true)
     setLoading(false)
@@ -27,7 +27,6 @@ export default function Home() {
           <h1>DataShield</h1>
           <p>Your personal data removal service</p>
         </div>
-
         {sent ? (
           <div className={styles.sent}>
             <div className={styles.sentIcon}>✓</div>
@@ -37,19 +36,10 @@ export default function Home() {
         ) : (
           <form onSubmit={handleLogin} className={styles.form}>
             <label>Email address</label>
-            <input
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-            />
-            <button type="submit" disabled={loading}>
-              {loading ? 'Sending...' : 'Sign in →'}
-            </button>
+            <input type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
+            <button type="submit" disabled={loading}>{loading ? 'Sending...' : 'Sign in →'}</button>
           </form>
         )}
-
         <p className={styles.tagline}>
           We automatically scan and remove your data from 20+ data brokers every 30 days.{' '}
           <a href="/pricing" style={{color:'#0f1117'}}>See plans →</a>
