@@ -1,35 +1,47 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
 export default function AuthCallback() {
+  const attempted = useRef(false)
+
   useEffect(() => {
-    supabase.auth.onAuthStateChange((event, session) => {
-      if (session) window.location.href = '/dashboard'
-    })
-    // Also check immediately
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) window.location.href = '/dashboard'
-      else {
-        // Process hash tokens
-        const hash = window.location.hash
-        if (hash) {
-          supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session) window.location.href = '/dashboard'
-            else window.location.href = '/'
-          })
-        } else {
-          setTimeout(() => window.location.href = '/', 3000)
-        }
+    if (attempted.current) return
+    attempted.current = true
+
+    // Listen for auth state change — fires when Supabase processes the URL hash
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        subscription.unsubscribe()
+        window.location.replace('/dashboard')
       }
     })
+
+    // Also check immediately in case already signed in
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        subscription.unsubscribe()
+        window.location.replace('/dashboard')
+      }
+    })
+
+    // Fallback: if nothing happens in 8 seconds, go to home
+    const fallback = setTimeout(() => {
+      subscription.unsubscribe()
+      window.location.replace('/')
+    }, 8000)
+
+    return () => {
+      clearTimeout(fallback)
+      subscription.unsubscribe()
+    }
   }, [])
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'100vh', fontFamily:'system-ui', backgroundColor:'#f5f5f3' }}>
-      <div style={{ width:52, height:52, backgroundColor:'#0f1117', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:18, fontWeight:700, marginBottom:20 }}>DS</div>
-      <h2 style={{ fontSize:18, color:'#0f1117', marginBottom:8 }}>Signing you in...</h2>
-      <p style={{ color:'#888', fontSize:14 }}>You'll be redirected to your dashboard shortly.</p>
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'100vh',fontFamily:'system-ui',background:'#f5f5f3'}}>
+      <div style={{width:52,height:52,background:'#0f1117',borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:18,fontWeight:700,marginBottom:20}}>DS</div>
+      <h2 style={{fontSize:18,color:'#0f1117',marginBottom:8}}>Signing you in...</h2>
+      <p style={{color:'#888',fontSize:14}}>Redirecting to your dashboard.</p>
     </div>
   )
 }
