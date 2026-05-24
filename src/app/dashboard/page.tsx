@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import styles from './page.module.css'
 
 interface Job {
+  id: string
   broker_name: string
   status: string
   result: { status: string; message: string } | null
@@ -18,15 +19,10 @@ interface Subscription {
   subject_name: string
   next_scan_at: string
   total_scans: number
-  current_period_end: string
 }
 
-const STATUS_ICON: Record<string, string> = {
-  completed: '✓', running: '●', claimed: '○', pending: '○', failed: '✗'
-}
-const STATUS_LABEL: Record<string, string> = {
-  completed: 'Submitted', running: 'Running', claimed: 'Queued', pending: 'Waiting', failed: 'Failed'
-}
+const STATUS_ICON: Record<string, string> = { completed: '✓', running: '●', claimed: '○', pending: '○', failed: '✗' }
+const STATUS_LABEL: Record<string, string> = { completed: 'Submitted', running: 'Running', claimed: 'Queued', pending: 'Waiting', failed: 'Failed' }
 
 export default function Dashboard() {
   const [jobs, setJobs] = useState<Job[]>([])
@@ -39,22 +35,11 @@ export default function Dashboard() {
     if (!user) { window.location.href = '/'; return }
     setUserEmail(user.email || '')
 
-    const { data: subs } = await supabase
-      .schema('ds')
-      .from('subscriptions')
-      .select('id, plan_id, status, subject_name, next_scan_at, total_scans, current_period_end')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
+    const { data, error } = await supabase.rpc('get_my_dashboard')
+    if (error) { console.error('dashboard error:', error); setLoading(false); return }
 
-    if (!subs?.length) { setLoading(false); return }
-    const subscription = subs[0]
-    setSub(subscription)
-
-    const { data: jobData } = await supabase.rpc('get_all_jobs_for_user', {
-      p_user_id: user.id
-    })
-    setJobs(jobData || [])
+    setSub(data?.subscription || null)
+    setJobs(data?.jobs || [])
     setLoading(false)
   }, [])
 
@@ -69,7 +54,14 @@ export default function Dashboard() {
     window.location.href = '/'
   }
 
-  if (loading) return <div className={styles.loading}>Loading...</div>
+  if (loading) return <div className={styles.loading}>Loading your dashboard...</div>
+
+  if (!sub) return (
+    <div className={styles.loading}>
+      <p>No subscription found.</p>
+      <a href="/pricing" style={{color:'#0f1117',marginTop:'12px',display:'block'}}>See plans →</a>
+    </div>
+  )
 
   const counts = {
     completed: jobs.filter(j => j.status === 'completed').length,
@@ -78,7 +70,7 @@ export default function Dashboard() {
     failed: jobs.filter(j => j.status === 'failed').length,
   }
   const pct = jobs.length ? Math.round((counts.completed / jobs.length) * 100) : 0
-  const nextScan = sub?.next_scan_at ? new Date(sub.next_scan_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'
+  const nextScan = sub.next_scan_at ? new Date(sub.next_scan_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'
 
   const sortedJobs = [...jobs].sort((a, b) => {
     const order: Record<string, number> = { completed: 0, running: 1, claimed: 2, pending: 3, failed: 4 }
@@ -100,36 +92,24 @@ export default function Dashboard() {
 
       <main className={styles.main}>
         <div className={styles.intro}>
-          <h1>Hi, {sub?.subject_name?.split(' ')[0] || 'there'} 👋</h1>
+          <h1>Hi, {sub.subject_name?.split(' ')[0] || 'there'} 👋</h1>
           <p>Here's the status of your data removal across {jobs.length} brokers.</p>
         </div>
 
         <div className={styles.stats}>
-          <div className={styles.stat}>
-            <div className={styles.statNum} style={{ color: '#0f6e56' }}>{counts.completed}</div>
-            <div className={styles.statLabel}>Submitted</div>
-          </div>
-          <div className={styles.stat}>
-            <div className={styles.statNum} style={{ color: '#185FA5' }}>{counts.inProgress}</div>
-            <div className={styles.statLabel}>In progress</div>
-          </div>
-          <div className={styles.stat}>
-            <div className={styles.statNum} style={{ color: '#888' }}>{counts.pending}</div>
-            <div className={styles.statLabel}>Pending</div>
-          </div>
-          <div className={styles.stat}>
-            <div className={styles.statNum} style={{ color: '#a32d2d' }}>{counts.failed}</div>
-            <div className={styles.statLabel}>Failed</div>
-          </div>
+          <div className={styles.stat}><div className={styles.statNum} style={{color:'#0f6e56'}}>{counts.completed}</div><div className={styles.statLabel}>Submitted</div></div>
+          <div className={styles.stat}><div className={styles.statNum} style={{color:'#185FA5'}}>{counts.inProgress}</div><div className={styles.statLabel}>In progress</div></div>
+          <div className={styles.stat}><div className={styles.statNum} style={{color:'#888'}}>{counts.pending}</div><div className={styles.statLabel}>Pending</div></div>
+          <div className={styles.stat}><div className={styles.statNum} style={{color:'#a32d2d'}}>{counts.failed}</div><div className={styles.statLabel}>Failed</div></div>
         </div>
 
         <div className={styles.progressCard}>
           <div className={styles.progressHeader}>
-            <span>Scan #{sub?.total_scans || 1} progress</span>
+            <span>Scan #{sub.total_scans} progress</span>
             <span>{pct}%</span>
           </div>
           <div className={styles.progressBar}>
-            <div className={styles.progressFill} style={{ width: `${pct}%` }} />
+            <div className={styles.progressFill} style={{width:`${pct}%`}} />
           </div>
           <p className={styles.nextScan}>Next automatic scan: <strong>{nextScan}</strong></p>
         </div>
@@ -141,13 +121,11 @@ export default function Dashboard() {
               const notFound = job.result?.status === 'not_found'
               const statusClass = styles[job.status] || styles.pending
               return (
-                <div key={job.broker_name} className={`${styles.brokerCard} ${statusClass}`}>
+                <div key={job.id} className={`${styles.brokerCard} ${statusClass}`}>
                   <div className={styles.brokerIcon}>{STATUS_ICON[job.status] || '○'}</div>
                   <div>
                     <div className={styles.brokerName}>{job.broker_name}</div>
-                    <div className={styles.brokerStatus}>
-                      {notFound ? 'Not listed' : STATUS_LABEL[job.status] || job.status}
-                    </div>
+                    <div className={styles.brokerStatus}>{notFound ? 'Not listed' : STATUS_LABEL[job.status] || job.status}</div>
                   </div>
                 </div>
               )
@@ -157,7 +135,7 @@ export default function Dashboard() {
 
         <div className={styles.infoBox}>
           <h3>What happens next?</h3>
-          <p>Data brokers typically process removal requests within <strong>3–30 days</strong>. Some will email you to confirm — make sure to click those confirmation links. DataShield will automatically re-scan and re-submit every 30 days since brokers often re-add removed listings.</p>
+          <p>Brokers typically process removals within <strong>3–30 days</strong>. Some will email you to confirm — click those links. DataShield automatically re-scans every 30 days.</p>
         </div>
       </main>
     </div>
