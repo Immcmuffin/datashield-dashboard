@@ -3,8 +3,10 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import styles from './page.module.css'
 
+type State = 'loading' | 'ready' | 'no-sub'
+
 export default function Dashboard() {
-  const [state, setState] = useState<'loading'|'ready'|'no-sub'>('loading')
+  const [state, setState] = useState<State>('loading')
   const [jobs, setJobs] = useState<any[]>([])
   const [sub, setSub] = useState<any>(null)
   const [email, setEmail] = useState('')
@@ -13,25 +15,35 @@ export default function Dashboard() {
 
   useEffect(() => {
     async function init() {
-      // Wait for Supabase to process URL hash if coming from magic link
-      await new Promise(r => setTimeout(r, 1500))
-
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        // Try one more time after another second
-        await new Promise(r => setTimeout(r, 2000))
-        const { data: { session: session2 } } = await supabase.auth.getSession()
-        if (!session2) { window.location.href = '/'; return }
-        setEmail(session2.user.email || '')
-      } else {
-        setEmail(session.user.email || '')
+      // If URL has access_token in hash, Supabase needs time to process it
+      const hasToken = window.location.hash.includes('access_token')
+      
+      if (hasToken) {
+        // Wait for Supabase to process the hash and establish session
+        await new Promise(r => setTimeout(r, 2500))
       }
+
+      // Try to get session — retry up to 3 times with delays
+      let session = null
+      for (let i = 0; i < 3; i++) {
+        const { data } = await supabase.auth.getSession()
+        if (data.session) { session = data.session; break }
+        if (i < 2) await new Promise(r => setTimeout(r, 1500))
+      }
+
+      if (!session) {
+        window.location.href = '/'
+        return
+      }
+
+      setEmail(session.user.email || '')
 
       const { data } = await supabase.rpc('get_my_dashboard')
       setSub(data?.subscription || null)
       setJobs(data?.jobs || [])
       setState(data?.subscription ? 'ready' : 'no-sub')
     }
+
     init()
   }, [])
 
@@ -46,16 +58,15 @@ export default function Dashboard() {
 
   if (state === 'loading') return (
     <div className={styles.loading}>
-      <div style={{width:44,height:44,background:'#0f1117',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:700,marginBottom:16}}>DS</div>
-      <div style={{color:'#888',fontSize:14}}>Loading your dashboard...</div>
+      <div style={{width:44,height:44,background:'#0f1117',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:700,marginBottom:16,fontFamily:'system-ui'}}>DS</div>
+      <div style={{color:'#888',fontSize:14,fontFamily:'system-ui'}}>Loading your dashboard...</div>
     </div>
   )
 
   if (state === 'no-sub') return (
     <div className={styles.loading}>
-      <div style={{width:44,height:44,background:'#0f1117',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:700,marginBottom:16}}>DS</div>
-      <p style={{marginBottom:12,color:'#444',fontSize:15}}>No active subscription found.</p>
-      <a href="/pricing" style={{color:'#0f1117',fontSize:14,fontWeight:500}}>See plans →</a>
+      <p style={{marginBottom:12,color:'#444',fontSize:15,fontFamily:'system-ui'}}>No active subscription found.</p>
+      <a href="/pricing" style={{color:'#0f1117',fontSize:14,fontFamily:'system-ui'}}>See plans →</a>
     </div>
   )
 
@@ -76,7 +87,8 @@ export default function Dashboard() {
         <div className={styles.brand}><div className={styles.logo}>DS</div><span>DataShield</span></div>
         <div className={styles.headerRight}>
           <span className={styles.email}>{email}</span>
-          <button className={styles.bellBtn} disabled={sendingReport} onClick={async()=>{setSendingReport(true);await fetch('https://raiddanqvnzxyjwfmyqo.supabase.co/functions/v1/notify-scan-complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription_id:sub.id})});setSendingReport(false);setReportSent(true);setTimeout(()=>setReportSent(false),3000)}}>
+          <button className={styles.bellBtn} disabled={sendingReport}
+            onClick={async()=>{setSendingReport(true);await fetch('https://raiddanqvnzxyjwfmyqo.supabase.co/functions/v1/notify-scan-complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription_id:sub.id})});setSendingReport(false);setReportSent(true);setTimeout(()=>setReportSent(false),3000)}}>
             {reportSent?'✓ Sent':sendingReport?'...':'🔔 Email report'}
           </button>
           <button className={styles.signOut} onClick={async()=>{await supabase.auth.signOut();window.location.href='/'}}>Sign out</button>
@@ -93,7 +105,7 @@ export default function Dashboard() {
           ))}
         </div>
         <div className={styles.progressCard}>
-          <div className={styles.progressHeader}><span>Progress</span><span>{pct}%</span></div>
+          <div className={styles.progressHeader}><span>Scan #{sub?.total_scans} progress</span><span>{pct}%</span></div>
           <div className={styles.progressBar}><div className={styles.progressFill} style={{width:`${pct}%`}}/></div>
           <p className={styles.nextScan}>Next scan: <strong>{nextScan}</strong></p>
         </div>
@@ -107,6 +119,10 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+        </div>
+        <div className={styles.infoBox}>
+          <h3>What happens next?</h3>
+          <p>Brokers process removals within <strong>3–30 days</strong>. Some will email you to confirm — click those links. DataShield re-scans every 30 days automatically.</p>
         </div>
       </main>
     </div>
